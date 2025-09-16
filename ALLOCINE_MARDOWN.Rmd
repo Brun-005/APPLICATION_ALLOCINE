@@ -1,0 +1,229 @@
+---
+title: "SEANCE  DATA VISUALISATION"
+author: "Brun BAHOUN"
+date: '2025-09-15'
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+
+```
+
+```{r cars}
+library(readr)
+library(dplyr)
+library(readxl)
+library(ggplot2)
+library(forcats)
+library(lubridate)
+```
+#________ PACKAGES ____________
+
+*readr pour le chargement des fichiers plats et dyplr pour l'Utilisation  de Tidyverse pour le traitement de données*
+
+```{r}
+data_allocine = read_csv2("DATA FICHIER/data_allocine.csv")
+correspondances = read_excel("DATA FICHIER/correspondances_allocine.xlsx") %>% 
+  rename(nationalite = nationalité )
+
+```
+*Nous avions fait une IMPORTATION de nos  DONNEES en la stocket dans un objet data_allocine*
+
+```{r}
+summary(data_allocine)
+```
+*Nous avons donc un petit appercu des variables numériques de notre objet*
+
+```{r}
+glimpse(data_allocine)
+```
+*Visualisation de la Structure des données. Nous pouvions également utilisé str pour cette visualisation*
+
+```{r}
+head(data_allocine, 10)
+```
+*Affichage des x premiers entetes de notre objet*
+
+```{r}
+class(data_allocine)
+```
+*La connaissance de la classe de l'objet a donc été donné par cette console*
+
+```{r}
+count(data_allocine, nationalite)
+```
+*Remarquons donc que nous visualisons le nombre de films par nationalité*
+
+```{r}
+data_sans_recompenses = select(data_allocine, -recompenses)
+```
+*Nous avions procédé à une suppresion de la colonne recompense de notre objet tout en stockant le nouveau objet obtenu dans une variable. SELECT a été utilisé pour la sélection en colonnes*
+
+```{r}
+data_sans_recompenses = filter(data_sans_recompenses, type_film == "Long-métrage")
+count(data_sans_recompenses, type_film)
+```
+*Utilisation de FILTRER : pour sélectionner des lignes via une condition et nous avons procéder à la condition suivante qui est de Ne garder que les longs métrages dans data_sans_recompenses puis après avons posséder à une vérification pour vérifier la commande exécutée*
+
+```{r}
+data_sans_recompenses = rename(data_sans_recompenses, titre_film = titre)
+glimpse(data_sans_recompenses)
+```
+*RENAME : utiliser pour renommer une variable et donc nous voulons renommer la variable titre en titre_film puis nous avons procéder à la vérification de notre commande*
+
+```{r}
+data_sans_recompenses = arrange(data_sans_recompenses, id_film)
+head(data_sans_recompenses)
+```
+*ARRANGE :utiliser pour trier un dataframe / tibble sur une ou des colonne(s) ainsi nous avons trier data_sans_recompenses selon l'id_film puis avons procéder à une vérification*
+
+```{r}
+data_allocine_italien = filter(data_sans_recompenses, nationalite == "italien")
+data_allocine_italien = arrange(data_allocine_italien, desc(duree))
+head(data_allocine_italien, 5)
+```
+*Nous avions faire un ENCHAINEMENT : Lister les 5 films italiens les plus longs sans utilisation du pipe* 
+
+```{r}
+data_sans_recompenses %>% 
+      filter(nationalite == "italien") %>%
+      arrange(desc(duree)) %>%
+      head(5)
+```
+*Ici nous avions utilisé le pipe pour lister les 5 films italiens les plus longs*
+
+```{r}
+data_sans_recompenses %>% 
+  filter(nationalite == "français" & note_presse >= 4 ) %>% 
+  arrange(note_presse) %>% 
+  select(titre_film,note_presse) %>% 
+  write_excel_csv2("Liste_bons_films_fr.csv")
+```
+*Exercice consistant à mettre dans un fichier csv la liste des  films français dont la note est supérieure à 4 et dont la colonne note est en ordre croissant tout en conservant la note et le titre du film*
+
+```{r}
+data_sans_recompenses = data_sans_recompenses %>% 
+      left_join(correspondances, by = "nationalite")
+glimpse(data_sans_recompenses)
+```
+*Nous allons Enrichir data_sans_recompenses avec les colonnes de correpsondances_allocine en faisant une jointure de gauche ainsi nous avons procédé au changement de notre objet*
+
+```{r}
+data_sans_recompenses %>% 
+  filter(genre == "Drame") %>% 
+  count(region) %>% 
+  arrange(desc(n)) %>% 
+  filter(!is.na(region))
+```
+*COMBIEN DE FILMS de drame EN EUROPE DE L'OUEST OU DE L'EST ? Telle est la question à laquelle nous voulons répondre en exécutant cette commande*
+
+```{r}
+data_sans_recompenses %>% 
+ summarize(
+  nbre_films = n(), # comptage du nombre de lignes
+  moyenne_presse = mean(note_presse, na.rm = TRUE),
+  moyenne_spectateurs = mean(note_spectateurs, na.rm = TRUE)
+ )
+```
+*Utilisation de summarize en faisant leCalcul de la moyenne des notes presse et la moyenne des notes spectateurs*
+
+```{r}
+    data_sans_recompenses %>% 
+      group_by(region) %>% 
+      summarize(
+        nbre_films = n(), # comptage du nombre de lignes
+        moyenne_presse = mean(note_presse, na.rm = TRUE),
+        moyenne_spectateurs = mean(note_spectateurs, na.rm = TRUE)
+      )
+```
+*GROUP BUY : en lien avec summarize, calculs par groupe. refaire les memes calculs pendant l'utilisation de summarize comme la précédente , mais selon la région*
+
+```{r}
+data_sans_recompenses %>% 
+  filter(region == "Europe de l'ouest") %>% 
+  group_by(genre) %>% 
+  summarize(
+    n = n(),
+    duree_moyenne = mean(duree, na.rm = TRUE)
+  ) %>% 
+  arrange(desc(n)) %>% 
+  head(5)
+    
+```
+*Calculer sur les films de l'europe de l'ouest la durée moyenne  et le nombre de films par genre puis afficher les 5 genres ayant le plus de duree moyenne*
+    
+```{r}
+data_sans_recompenses = data_sans_recompenses %>% 
+  mutate(
+    note_totale = note_presse + note_spectateurs
+  )
+
+data_sans_recompenses %>% summarize(
+  note_totale_moyenne = mean(note_totale, na.rm = TRUE)
+)
+```
+*MUTATE pour créer ou mette à jou rune colonne d'un dataframe ainsi nous exécutons la commande suiavante pour créer une colonne note_totale qui est la somme de presse et spectateurs*
+
+
+```{r}
+data_sans_recompenses = data_sans_recompenses %>% 
+  mutate(
+    tr_note = if_else( is.na(note_totale), "Pas de note",
+                       if_else(note_totale < 5, "Mauvais film", 
+                       if_else(note_totale < 7, "Moyen Film", 
+                               "Bon Film")
+    ))
+  )
+
+count(data_sans_recompenses, tr_note)
+
+```
+*Utilisation de MUTATE AVEC IFELSE qui permet de  créer une variable d'un dataframe sous condition ainsi nous allons procéder à la création d'une tr_note basée sur la note totale : moins de 5, entre 5 et 7, plus de 7*
+
+
+
+
+#__________________________ VISUALISATION _______________________________
+
+```{r pressure, echo=FALSE}
+ data_sans_recompenses %>% 
+  filter(!is.na(region)) %>% 
+  count(region) %>%
+  arrange(n) %>% 
+  mutate(region = as_factor(region)) %>%  # Tranformer Région een facteur selon l'ordre des 
+  ggplot() + # Fonction primordiale de base de tout graphique ggplot
+  geom_col(aes(x=n, y = region, fill = region )) + # Geom pour faire des barres 
+  labs(title = "Nombre de films par région", x = " Nombre de films", y = "") + #Labs pour titre 
+  theme_minimal() # Thème : apparence générale du graphique
+```
+
+
+```{r courbe, echo=FALSE}
+data_sans_recompenses %>% 
+  mutate(annee_sortie = year(date_sortie)) %>%  # year de lubridate , extraire l'année
+  count(annee_sortie) %>% 
+  ggplot() +
+  geom_line(aes(x = annee_sortie, y=n)) +
+  labs(title = "Evolution du nombre de films sortis par an")
+```
+
+
+```{r graph, echo=FALSE}
+data_sans_recompenses %>% 
+  group_by(genre) %>% 
+  summarize(
+    n=n(),
+    note_totale_mediane = median(note_totale, na.rm = TRUE)) %>% 
+  filter(n>100) %>% 
+  arrange(note_totale_mediane) %>% 
+  mutate(genre = as_factor(genre)) %>% 
+  ggplot() + 
+  geom_col(aes(y = genre , x = note_totale_mediane), fill = "blue") +
+  labs(title = "Note médiane par genre",
+       substitle = "Genre avec plus de 100 films uniquement",
+       x = "Note médiane", y = "") +
+  theme_classic()
+```
+
